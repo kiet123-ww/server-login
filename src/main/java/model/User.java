@@ -38,22 +38,35 @@ public class User {
     }
 
     public boolean login() {
-        System.out.println("Login username: " + this.username + " serverID: " + this.serverID);
+        System.out.println("[LOGIN] username='" + this.username + "' password='" + this.password + "' serverID=" + this.serverID);
         try {
             MongoCollection<Document> collection = db.MongoDBConnection.getDatabase().getCollection("account");
+            
+            // Tìm theo username trước để xem account có tồn tại không
+            Document byUsername = collection.find(Filters.eq("username", this.username)).first();
+            if (byUsername == null) {
+                System.out.println("[LOGIN] FAIL - Khong tim thay username: '" + this.username + "' trong database");
+            } else {
+                System.out.println("[LOGIN] Tim thay username: '" + this.username + "', password trong DB: '" + byUsername.get("password") + "', password nhap vao: '" + this.password + "'");
+            }
+            
             Document rs = collection.find(Filters.and(Filters.eq("username", this.username), Filters.eq("password", this.password))).first();
             
             if (rs != null) {
+                System.out.println("[LOGIN] Username+Password khop! Dang xu ly dang nhap...");
                 int waitLogin;
                 this.userID = rs.getInteger("id", 0);
                 int serverLogin = rs.getInteger("server_login", 0);
+                System.out.println("[LOGIN] userID=" + this.userID + " serverLogin=" + serverLogin + " requestedServer=" + this.serverID);
                 if (serverLogin != this.serverID) {
+                    System.out.println("[LOGIN] FAIL - Server khong khop: account thuoc SV" + serverLogin + " nhung request SV" + this.serverID);
                     this.session.getService().loginFailed(this.clientID, "Account nay thuoc may chu SV" + serverLogin);
                     boolean bl = false;
                     return bl;
                 }
                 User us = UserManager.getInstance().find(this.userID);
                 if (us != null) {
+                    System.out.println("[LOGIN] FAIL - User dang online, kick cu...");
                     us.disconnect();
                     this.session.getService().loginFailed(this.clientID, "Đăng nhập thất bại, vui lòng đăng nhập lại!");
                     boolean bl = false;
@@ -67,8 +80,10 @@ public class User {
                 // is_admin stored as Integer 0/1 from MySQL migration
                 Object isAdminObj = rs.get("is_admin");
                 this.admin = isAdminObj != null && (isAdminObj.equals(1) || isAdminObj.equals(true));
+                System.out.println("[LOGIN] is_admin=" + isAdminObj + " -> admin=" + this.admin);
                 int secondsPass = (int) ((System.currentTimeMillis() - this.lastTimeLogout) / 1000L);
                 if (secondsPass < (waitLogin = Server.getInstance().getConfig().getSecondWaitLogin())) {
+                    System.out.println("[LOGIN] FAIL - Chua het thoi gian cho: " + secondsPass + "s / " + waitLogin + "s");
                     this.session.getService().loginFailed(this.clientID,
                             "Vui lòng chờ " + (waitLogin - secondsPass) + " giây để đăng nhập lại.");
                     boolean bl = false;
@@ -89,17 +104,21 @@ public class User {
                 // ban stored as Integer 0/1 from MySQL migration
                 Object banObj = rs.get("ban");
                 boolean ban = banObj != null && (banObj.equals(1) || banObj.equals(true));
+                System.out.println("[LOGIN] active=" + this.actived + " ban=" + ban + " testmode=" + Server.getInstance().getConfig().getTestmode());
                 if (!this.admin && Server.getInstance().getConfig().getTestmode() == 1) {
+                    System.out.println("[LOGIN] FAIL - Server dang o testmode, chi admin moi login duoc");
                     this.session.getService().loginFailed(this.clientID,
                             "Server đang được admin xử lý và kiểm tra lại,vui lòng quay lại sau");
                     boolean bl = false;
                     return bl;
                 }
                 if (ban) {
+                    System.out.println("[LOGIN] FAIL - Tai khoan bi ban");
                     this.session.getService().loginFailed(this.clientID, "Tài khoản đã bị khóa do vi phạm điều khoản!");
                     boolean bl = false;
                     return bl;
                 }
+                System.out.println("[LOGIN] SUCCESS - Dang nhap thanh cong: username=" + this.username + " userID=" + this.userID);
                 this.session.getService().loginSuccessful(this);
                 boolean bl = true;
                 return bl;
