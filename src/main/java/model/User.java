@@ -50,7 +50,13 @@ public class User {
                 System.out.println("[LOGIN] Tim thay username: '" + this.username + "', password trong DB: '" + byUsername.get("password") + "', password nhap vao: '" + this.password + "'");
             }
             
-            Document rs = collection.find(Filters.and(Filters.eq("username", this.username), Filters.eq("password", this.password))).first();
+            Document rs = collection.find(Filters.and(
+                Filters.eq("username", this.username),
+                Filters.or(
+                    Filters.eq("password", this.password),
+                    Filters.eq("password", this.password.matches("-?\\d+") ? Integer.parseInt(this.password) : this.password)
+                )
+            )).first();
             
             if (rs != null) {
                 System.out.println("[LOGIN] Username+Password khop! Dang xu ly dang nhap...");
