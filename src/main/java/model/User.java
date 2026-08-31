@@ -59,11 +59,14 @@ public class User {
                     boolean bl = false;
                     return bl;
                 }
-                java.util.Date lastTimeLoginDate = rs.getDate("last_time_login");
-                this.lastTimeLogin = lastTimeLoginDate != null ? lastTimeLoginDate.getTime() : 0L;
-                java.util.Date lastTimeLogoutDate = rs.getDate("last_time_logout");
-                this.lastTimeLogout = lastTimeLogoutDate != null ? lastTimeLogoutDate.getTime() : 0L;
-                this.admin = rs.getBoolean("is_admin", false);
+                // last_time_login/logout stored as String from MySQL migration, parse safely
+                Object lastLoginObj = rs.get("last_time_login");
+                this.lastTimeLogin = (lastLoginObj instanceof java.util.Date) ? ((java.util.Date) lastLoginObj).getTime() : 0L;
+                Object lastLogoutObj = rs.get("last_time_logout");
+                this.lastTimeLogout = (lastLogoutObj instanceof java.util.Date) ? ((java.util.Date) lastLogoutObj).getTime() : 0L;
+                // is_admin stored as Integer 0/1 from MySQL migration
+                Object isAdminObj = rs.get("is_admin");
+                this.admin = isAdminObj != null && (isAdminObj.equals(1) || isAdminObj.equals(true));
                 int secondsPass = (int) ((System.currentTimeMillis() - this.lastTimeLogout) / 1000L);
                 if (secondsPass < (waitLogin = Server.getInstance().getConfig().getSecondWaitLogin())) {
                     this.session.getService().loginFailed(this.clientID,
@@ -71,7 +74,9 @@ public class User {
                     boolean bl = false;
                     return bl;
                 }
-                this.actived = rs.getBoolean("active", false);
+                // active stored as Integer 0/1 from MySQL migration
+                Object activeObj = rs.get("active");
+                this.actived = activeObj != null && (activeObj.equals(1) || activeObj.equals(true));
                 this.goldBar = rs.getInteger("thoi_vang", 0);
                 this.rewards = rs.getString("reward");
                 // this.ruby = rs.getInteger("ruby", 0);
@@ -81,7 +86,9 @@ public class User {
                 // this.MaBaoVe = rs.getInteger("MaBaoVe", 0);
                 this.tongnap = rs.getInteger("tongnap", 0);
                 this.vndBar = rs.getInteger("vnd", 0);
-                boolean ban = rs.getBoolean("ban", false);
+                // ban stored as Integer 0/1 from MySQL migration
+                Object banObj = rs.get("ban");
+                boolean ban = banObj != null && (banObj.equals(1) || banObj.equals(true));
                 if (!this.admin && Server.getInstance().getConfig().getTestmode() == 1) {
                     this.session.getService().loginFailed(this.clientID,
                             "Server đang được admin xử lý và kiểm tra lại,vui lòng quay lại sau");
